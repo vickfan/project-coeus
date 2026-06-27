@@ -6,7 +6,6 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN)
-console.log(process.env)
 
 bot.on('text', async (ctx) => {
   const text = ctx.message.text

@@ -32,10 +32,8 @@ export class FileHandler {
       const fileLink = await ctx.telegram.getFileLink(file.file_id)
       const response = await fetch(fileLink.href)
       const rawContent = await response.text()
-      console.log('rawContent', rawContent)
 
       const encryptedContent = CryptoUtil.encrypt(rawContent)
-      console.log('encryptedContent', encryptedContent)
       const fileUuid = crypto.randomUUID()
       const filePath = path.join(__dirname, '../../notes/raw-notes', `${fileUuid}.md`)
 
