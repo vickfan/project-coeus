@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  coeus-bot:
+    build: .
+    container_name: coeus-bot-local
+    restart: unless-stopped
+    environment:
+      - COEUS_USERNAME=${COEUS_USERNAME}
+      - COEUS_NOTES_TOKEN=${COEUS_NOTES_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - COEUS_NOTES_REPO=${COEUS_NOTES_REPO}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    volumes:
+      - ./src:/app/src
+      - ./notes:/app/notes
