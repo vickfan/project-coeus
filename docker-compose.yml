@@ -11,6 +11,7 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - COEUS_NOTES_REPO=${COEUS_NOTES_REPO}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./src:/app/src
       - ./notes:/app/notes
