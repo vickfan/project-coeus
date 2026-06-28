@@ -21,4 +21,4 @@ git remote add origin "https://${COEUS_NOTES_TOKEN}@github.com/${COEUS_USERNAME}
 git pull origin main
 
 # 啟動 Node.js TG Bot
-exec node src/tg-bot.mjs
+exec node src/telegramBot.mjs

@@ -5,6 +5,9 @@ dotenv.config()
 
 export class CryptoUtil {
   static encrypt(text) {
+    if (!process.env.ENCRYPTION_ENABLED) {
+      return text
+    }
     const key = Buffer.from(process.env.ENCRYPTION_KEY, 'utf-8')
     const iv = crypto.randomBytes(16)
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv)
