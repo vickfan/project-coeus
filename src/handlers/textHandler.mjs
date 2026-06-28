@@ -1,6 +1,6 @@
 import moment from 'moment'
 import path from 'path'
-import { CryptoUtil } from '../crypto-util.mjs'
+import { CryptoUtil } from '../cryptoUtil.mjs'
 import fs from 'fs/promises'
 import { GitHubHelper } from '../githubHelper.mjs'
 import { fileURLToPath } from 'url'
@@ -31,10 +31,9 @@ export class TextHandler {
       ctx.reply(aiReply)
 
       GitHubHelper.syncToGitHub(`Capture text: ${dateStr}`)
-      await ctx.reply('🔒 諗法已即時加密暫存')
       return true
     } catch (err) {
-      await ctx.reply('❌ 寫入暫存失敗 \n' + err.message)
+      console.error('handleText error', err)
       return false
     }
   }

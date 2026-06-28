@@ -1,5 +1,5 @@
 import path from 'path'
-import { CryptoUtil } from '../crypto-util.mjs'
+import { CryptoUtil } from '../cryptoUtil.mjs'
 import fs from 'fs/promises'
 import { GitHubHelper } from '../githubHelper.mjs'
 import crypto from 'crypto'
