@@ -1,15 +1,14 @@
-FROM node:18-alpine
+FROM node:24-slim
 
-# 安裝基本 Git 與 OpenSSH 
-RUN apk add --no-cache git openssh-client
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git openssh-client \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# 先複製 Package 檔案並安裝依賴
 COPY package*.json ./
 RUN npm ci
 
-# 複製其餘 Source Code 與啟動腳本
 COPY src/ ./src
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

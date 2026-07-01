@@ -1,15 +1,16 @@
 import { GoogleGenAI } from '@google/genai'
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { createGeminiClient } from './llm/geminiClient.mjs'
 
 dotenv.config()
 
 const chatContext = new Map()
 const MAX_CONTEXT_LENGTH = 20
 
-const apiKey = process.env.GEMINI_API_KEY
-const ai = new GoogleGenAI({
-  apiKey: apiKey,
-})
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const model = 'gemini-2.5-flash'
 
@@ -25,17 +26,34 @@ const systemInstruction = `
 5. 說話要極度精煉、直奔主題！不要長篇大論，不要炫技，每條回覆盡量保持在 2-4 句內，方便在 Telegram 快速閱讀。
 `
 
-export class Gemini {
-  
+function createChatClient() {
+  dotenv.config({ override: true })
 
+  if (process.env.GEMINI_API_KEY) {
+    return createGeminiClient()
+  }
+
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(
+    __dirname,
+    '../project-coeus-api.json',
+  )
+
+  return new GoogleGenAI({
+    vertexai: true,
+    project: process.env.GOOGLE_CLOUD_PROJECT || 'project-coeus-500906',
+    location: process.env.GOOGLE_CLOUD_LOCATION || 'asia-east1',
+  })
+}
+
+export class Gemini {
   static async chat(chatId, userMessage) {
     if (!chatContext.has(chatId)) {
       chatContext.set(chatId, [])
     }
     const history = chatContext.get(chatId)
-  
 
     try {
+      const ai = createChatClient()
       const response = await ai.models.generateContent({
         model: model,
         contents: [
@@ -44,7 +62,7 @@ export class Gemini {
         ],
         config: {
           systemInstruction: systemInstruction.trim(),
-        }
+        },
       })
 
       const aiReply = response.text

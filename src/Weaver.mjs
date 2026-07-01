@@ -1,20 +1,19 @@
 import fs from 'fs'
 import path from 'path'
 import dotenv from 'dotenv'
-import { GoogleGenAI, Type } from '@google/genai'
 import { fileURLToPath } from 'url'
 import { GitHubHelper } from './githubHelper.mjs'
 import crypto from 'crypto'
 import { CryptoUtil } from './cryptoUtil.mjs'
+import { extractNoteMeta, embedText } from './llmProvider.mjs'
+import { resolveLlmProvider } from './llm/resolveProvider.mjs'
 
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-})
+console.log(`[Coeus Weaver] LLM_PROVIDER=${resolveLlmProvider()}`)
 
 const rawNoteText = process.env.RAW_NOTE_TEXT || ''
 
@@ -36,15 +35,9 @@ async function startWeaving(rawNoteText) {
   }
 
   try {
-    const embResponse = await ai.models.embedContent({
-      model: 'gemini-embedding-2',
-      contents: {
-        parts: [{ text: rawNoteText }],
-      },
-    })
-    const newVector = embResponse.embeddings[0].values
+    const newVector = await embedText(rawNoteText)
 
-    const meta = await askGeminiForMeta(rawNoteText)
+    const meta = await extractNoteMeta(rawNoteText)
 
     const indexPath = path.join(__dirname, '../notes', 'index.json')
     const notesDir = path.join(__dirname, '../notes', 'persistent')
@@ -139,7 +132,7 @@ async function startWeaving(rawNoteText) {
       })
     }
 
-    GitHubHelper.syncToGitHub(`Capture note: ${coeusPayload.uuid} - ${coeusPayload.title}`)
+    await GitHubHelper.syncToGitHub(`Capture note: ${coeusPayload.uuid} - ${coeusPayload.title}`)
   } catch (err) {
     console.error('Coeus Core Error:', err)
     process.exit(1)
@@ -199,41 +192,6 @@ ${wikiLinksSection}`
     fs.mkdirSync(indexDir, { recursive: true })
   }
   fs.writeFileSync(indexPath, JSON.stringify(indexData, null, 2), 'utf-8')
-}
-
-async function askGeminiForMeta(rawNoteText) {
-  try {
-    const catResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: typeof rawNoteText === 'string' ? rawNoteText : JSON.stringify(rawNoteText),
-      config: {
-        systemInstruction:
-          '你是一個嚴格的個人知識庫(PKM)管理員。你的唯一任務是分析用戶輸入的筆記內容，並為其提取一個適合當作 Obsidian 檔名的標題，以及 2-3 個分類標籤。絕對不要包含任何筆記原文。',
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: {
-              type: Type.STRING,
-              description:
-                '一個適合當作 Obsidian Markdown 檔案名稱的簡短標準標題，移除非法字元。',
-            },
-            tags: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: '2-3 個最相關的領域標籤。',
-            },
-          },
-          required: ['title', 'tags'],
-        },
-      },
-    })
-
-    return JSON.parse(catResponse.text)
-  } catch (err) {
-    console.error('Gemini Schema Generation Failed:', err)
-    throw err
-  }
 }
 
 function hasSharedTags(tagsA, tagsB) {
