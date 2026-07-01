@@ -1,3 +1,4 @@
 [submodule "notes"]
 	path = notes
 	url = git@github.com:vickfan/coeus-note.git
+	ignore = all
