@@ -15,7 +15,9 @@ const __dirname = path.dirname(__filename)
 
 console.log(`[Coeus Weaver] LLM_PROVIDER=${resolveLlmProvider()}`)
 
-const rawNoteText = process.env.RAW_NOTE_TEXT || ''
+function sanitizeTitle(title) {
+  return title.replace(/[\/\\?%*:|"<>]/g, '-')
+}
 
 function cosineSimilarity(vecA, vecB) {
   let dotProduct = 0
@@ -29,113 +31,105 @@ function cosineSimilarity(vecA, vecB) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
-async function startWeaving(rawNoteText) {
+async function startWeaving(rawNoteText, options = {}) {
+  const {
+    titleOverride,
+    skipGitSync = process.env.GITHUB_ACTIONS === 'true',
+  } = options
+
   if (!rawNoteText.trim()) {
     return
   }
 
-  try {
-    const newVector = await embedText(rawNoteText)
+  const newVector = await embedText(rawNoteText)
+  const meta = await extractNoteMeta(rawNoteText)
+  const title = sanitizeTitle(titleOverride ?? meta.title)
+  const tags = meta.tags
 
-    const meta = await extractNoteMeta(rawNoteText)
+  const indexPath = path.join(__dirname, '../notes', 'index.json')
+  const notesDir = path.join(__dirname, '../notes', 'persistent')
+  let top5Links = []
 
-    const indexPath = path.join(__dirname, '../notes', 'index.json')
-    const notesDir = path.join(__dirname, '../notes', 'persistent')
-    let top5Links = []
+  if (fs.existsSync(indexPath)) {
+    const indexData = JSON.parse(fs.readFileSync(indexPath, 'utf-8'))
 
-    if (fs.existsSync(indexPath)) {
-      const indexData = JSON.parse(fs.readFileSync(indexPath, 'utf-8'))
+    const scored = indexData.map((oldNote) => {
+      const score = cosineSimilarity(newVector, oldNote.embedding)
+      const shared = hasSharedTags(tags, oldNote.tags)
 
-      const scored = indexData.map((oldNote) => {
-        const score = cosineSimilarity(newVector, oldNote.embedding)
+      let passThreshold = false
+      if (shared) {
+        passThreshold = score > 0.45
+      } else {
+        passThreshold = score > 0.75
+      }
 
-        // 1. 🔍 檢查呢篇舊筆記同新筆記有無共同 Tag
-        const shared = hasSharedTags(meta.tags, oldNote.tags)
+      return {
+        title: oldNote.title,
+        score: score,
+        pass: passThreshold,
+      }
+    })
 
-        // 2. 🔀 實施動態門檻規則
-        let passThreshold = false
-        if (shared) {
-          // 有共同 Tag，證明大方向一致，Vector 相似度有 0.45 就可以織網
-          passThreshold = score > 0.45
-        } else {
-          // 零共同 Tag，兩者係風馬牛不相及嘅領域，Vector 相似度必須極高（例如 0.75）先准過關
-          passThreshold = score > 0.75
-        }
+    top5Links = scored
+      .filter((item) => item.pass)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((item) => item.title)
 
-        return {
-          title: oldNote.title,
-          score: score,
-          pass: passThreshold,
-        }
-      })
+    console.log('經過 Tag 交叉過濾後的精準網眼：', top5Links)
+  }
 
-      // 3. 🎯 篩選出真正 pass 嘅最頂尖 5 條線
-      top5Links = scored
-        .filter((item) => item.pass)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5)
-        .map((item) => item.title)
+  const coeusPayload = {
+    uuid: crypto.randomUUID(),
+    title: title,
+    tags: tags,
+    raw_content: rawNoteText,
+    vector: newVector,
+    suggested_wiki_links: top5Links,
+  }
 
-      console.log('經過 Tag 交叉過濾後的精準網眼：', top5Links)
-    }
+  buildAndSaveMarkdown(coeusPayload)
 
-    const coeusPayload = {
-      uuid: crypto.randomUUID(),
-      title: meta.title.replace(/[\/\\?%*:|"<>]/g, '-'),
-      tags: meta.tags,
-      raw_content: rawNoteText,
-      vector: newVector,
-      suggested_wiki_links: top5Links,
-    }
+  const newCardPath = path.join(notesDir, `${coeusPayload.title}.md`)
+  const syncedPaths = [newCardPath, indexPath]
 
-    buildAndSaveMarkdown(coeusPayload)
+  if (
+    coeusPayload.suggested_wiki_links &&
+    coeusPayload.suggested_wiki_links.length > 0
+  ) {
+    coeusPayload.suggested_wiki_links.forEach((oldTitle) => {
+      const oldFilePath = path.join(notesDir, `${oldTitle}.md`)
 
-    if (
-      coeusPayload.suggested_wiki_links &&
-      coeusPayload.suggested_wiki_links.length > 0
-    ) {
-      coeusPayload.suggested_wiki_links.forEach((oldTitle) => {
-        // 尋找舊卡片的路徑 (支持明文或加密後綴)
-        const oldFilePath = path.join(notesDir, `${oldTitle}.md`)
+      const actualOldPath = fs.existsSync(oldFilePath) ? oldFilePath : null
 
-        let actualOldPath = fs.existsSync(oldFilePath)
-          ? oldFilePath
-          : null
+      if (actualOldPath) {
+        let oldContent = fs.readFileSync(actualOldPath, 'utf-8')
+        const sectionHeader = `\n\n---\n### 🧠 Coeus 織網連結 (回程)`
 
-        if (actualOldPath) {
-          // 讀取舊卡片原有內容
-          let oldContent = fs.readFileSync(actualOldPath, 'utf-8')
-
-          // 檢查舊卡片是不是已經有「Coeus 回溯連結」這個 Section
-          const sectionHeader = `\n\n---\n### 🧠 Coeus 織網連結 (回程)`
-
-          if (!oldContent.includes(sectionHeader)) {
-            // 如果沒有，直接在最底追加 Section 標頭連同新卡片的 Wiki-link
-            oldContent += `${sectionHeader}\n- [[${coeusPayload.title}]]`
-          } else {
-            // 如果有了，檢查是不是已經連過（防止重複跑 Actions 重複插入）
-            if (!oldContent.includes(`- [[${coeusPayload.title}]]`)) {
-              // 在該 Section 下方追加新連結
-              oldContent = oldContent.replace(
-                sectionHeader,
-                `${sectionHeader}\n- [[${coeusPayload.title}]]`,
-              )
-            }
-          }
-
-          // 覆寫回舊檔案
-          fs.writeFileSync(actualOldPath, oldContent, 'utf-8')
-          console.log(
-            `[🕸️ 雙向成功] 已回溯更新舊卡片: ${oldTitle} ➔ 連回 [[${coeusPayload.title}]]`,
+        if (!oldContent.includes(sectionHeader)) {
+          oldContent += `${sectionHeader}\n- [[${coeusPayload.title}]]`
+        } else if (!oldContent.includes(`- [[${coeusPayload.title}]]`)) {
+          oldContent = oldContent.replace(
+            sectionHeader,
+            `${sectionHeader}\n- [[${coeusPayload.title}]]`,
           )
         }
-      })
-    }
 
-    await GitHubHelper.syncToGitHub(`Capture note: ${coeusPayload.uuid} - ${coeusPayload.title}`)
-  } catch (err) {
-    console.error('Coeus Core Error:', err)
-    process.exit(1)
+        fs.writeFileSync(actualOldPath, oldContent, 'utf-8')
+        syncedPaths.push(actualOldPath)
+        console.log(
+          `[🕸️ 雙向成功] 已回溯更新舊卡片: ${oldTitle} ➔ 連回 [[${coeusPayload.title}]]`,
+        )
+      }
+    })
+  }
+
+  if (!skipGitSync) {
+    await GitHubHelper.syncToGitHub(
+      `Weave note: ${coeusPayload.uuid} - ${coeusPayload.title}`,
+      { filePaths: syncedPaths },
+    )
   }
 }
 
@@ -156,7 +150,7 @@ created_at: ${new Date().toISOString()}
 
 ${payload.raw_content}
 ${wikiLinksSection}`
-  
+
   const fileContent = CryptoUtil.encrypt(markdownTemplate)
 
   const fileName = `${payload.title}.md`
@@ -184,7 +178,8 @@ ${wikiLinksSection}`
 
   indexData.push({
     uuid: payload.uuid,
-    title: payload.title, // 記低明文 Title，下次第 2 步比對完可以直接用嚟砌 [[Wiki-link]]
+    title: payload.title,
+    tags: payload.tags,
     embedding: payload.vector,
   })
 
@@ -196,11 +191,8 @@ ${wikiLinksSection}`
 
 function hasSharedTags(tagsA, tagsB) {
   if (!tagsA || !tagsB) return false
-  // 全部轉小階，防止 #Sports 同 #sports 對接唔到
   const setA = new Set(tagsA.map((t) => t.toLowerCase().trim()))
   return tagsB.some((t) => setA.has(t.toLowerCase().trim()))
 }
-
-// startWeaving()
 
 export { startWeaving }

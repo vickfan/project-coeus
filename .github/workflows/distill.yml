@@ -37,12 +37,12 @@ jobs:
       - name: 'Install Dependencies'
         run: 'npm ci'
 
-      - name: 'Run Coeus Distill Script'
+      - name: 'Run Coeus Weave Batch'
         env:
           LLM_PROVIDER: 'github'
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           GITHUB_MODEL: 'openai/gpt-4o-mini'
-        run: 'node src/distill-script.js' # 呢度行你寫好嘅凌晨分流與蒸餾 Script
+        run: 'node src/weave-batch.mjs'
 
       - name: 'Commit and Push Changes to Private Notes'
         run: |
