@@ -5,49 +5,53 @@ import fs from 'fs/promises'
 import { GitHubHelper } from '../githubHelper.mjs'
 import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
-import { Gemini } from '../gemini.mjs'
 
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const MIN_TEXT_LENGTH = 10
+
 export class TextHandler {
   static async handleText(ctx, text) {
-    const chatId = ctx.chat.id
+    if (text.length < MIN_TEXT_LENGTH) {
+      await ctx.reply('訊息太短，未能儲存（最少 10 個字元）')
+      return false
+    }
+
     const now = moment().tz('Asia/Hong_Kong')
-    const dateStr = now.format('YYYY-MM-DD')
-    const timeStr = now.format('HH:mm:ss')
-    const filePath = path.join(__dirname, '../../notes/conversation', `${dateStr}.md`)
+    const timestamp = now.format('YYYY-MM-DD-HHmmss')
+    const capturedAt = now.toISOString()
+    const fileName = `${timestamp}.md`
 
-    const aiReply = await Gemini.chat(chatId, text)
+    const content = `---
+captured_at: ${capturedAt}
+source: telegram-text
+---
 
-    const userLog = { role: 'user', text: text, time: timeStr }
-    const modelLog = { role: 'model', text: aiReply, time: timeStr }
+${text}`
 
     try {
+      const filePath = path.join(__dirname, '../../notes/raw-notes', fileName)
       await fs.mkdir(path.dirname(filePath), { recursive: true })
+      await fs.writeFile(filePath, CryptoUtil.encrypt(content), 'utf8')
 
-      let currentHistory = []
-      try {
-        const fileContent = await fs.readFile(filePath, 'utf8')
-        currentHistory = JSON.parse(fileContent)
-      } catch (e) {}
-
-      currentHistory.push(userLog, modelLog)
-
-      await fs.writeFile(
+      const syncResult = await GitHubHelper.syncToGitHub(`Capture text note: ${timestamp}`, {
         filePath,
-        JSON.stringify(currentHistory, null, 2),
-        'utf8',
-      )
+        onError: async () => {
+          await ctx.reply('❌ GitHub 同步失敗，筆記已本地儲存但未能上傳')
+        },
+      })
 
-      ctx.reply(aiReply)
+      if (syncResult.success) {
+        await ctx.reply(`✅ 筆記已儲存並同步到 GitHub (${fileName})`)
+      }
 
-      await GitHubHelper.syncToGitHub(`Capture conversation: ${dateStr}`)
-      return true
+      return syncResult.success
     } catch (err) {
       console.error('handleText error', err)
+      await ctx.reply('❌ 處理文字筆記時發生錯誤')
       return false
     }
   }

@@ -33,7 +33,7 @@ export class FileHandler {
     const safeName = sanitizeFileName(file.file_name)
 
     try {
-      await ctx.reply('📥 正在下載並加密筆記...')
+      await ctx.reply('📥 正在下載筆記...')
 
       const fileLink = await ctx.telegram.getFileLink(file.file_id)
       const response = await fetch(fileLink.href)
@@ -46,15 +46,14 @@ export class FileHandler {
       await fs.writeFile(filePath, encryptedContent, 'utf8')
 
       const syncResult = await GitHubHelper.syncToGitHub(`Capture note: ${safeName}`, {
+        filePath,
         onError: async () => {
           await ctx.reply('❌ GitHub 同步失敗，筆記已本地儲存但未能上傳')
         },
       })
 
-      if (syncResult.success && !syncResult.noChanges) {
-        await ctx.reply(`✅ 筆記「${safeName}」已加密並同步到 GitHub`)
-      } else if (syncResult.success) {
-        await ctx.reply(`✅ 筆記「${safeName}」已加密並儲存`)
+      if (syncResult.success) {
+        await ctx.reply(`✅ 筆記「${safeName}」已儲存並同步到 GitHub`)
       }
 
       return syncResult.success
