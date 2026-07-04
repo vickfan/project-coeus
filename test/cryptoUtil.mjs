@@ -23,9 +23,22 @@ describe('CryptoUtil', () => {
     assert.strictEqual(CryptoUtil.decrypt(encrypted), plaintext)
   })
 
-  it('passthrough decrypt when encryption disabled', () => {
+  it('passthrough encrypt/decrypt when encryption disabled', () => {
     process.env.ENCRYPTION_ENABLED = 'false'
     const plaintext = 'plain text note'
+    assert.strictEqual(CryptoUtil.encrypt(plaintext), plaintext)
+    assert.strictEqual(CryptoUtil.decrypt(plaintext), plaintext)
+    process.env.ENCRYPTION_ENABLED = 'true'
+  })
+
+  it('passthrough decrypt for plaintext with colons (e.g. YAML frontmatter)', () => {
+    process.env.ENCRYPTION_ENABLED = 'false'
+    const plaintext = `---
+captured_at: 2026-07-04T13:54:36.618Z
+source: telegram-text
+---
+
+Hello`
     assert.strictEqual(CryptoUtil.decrypt(plaintext), plaintext)
     process.env.ENCRYPTION_ENABLED = 'true'
   })

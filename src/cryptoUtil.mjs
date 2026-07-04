@@ -3,9 +3,19 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
+const ENCRYPTED_PATTERN = /^[0-9a-f]{32}:[0-9a-f]+$/i
+
+function isEncryptionEnabled() {
+  return process.env.ENCRYPTION_ENABLED?.trim().toLowerCase() === 'true'
+}
+
+function looksEncrypted(text) {
+  return ENCRYPTED_PATTERN.test(text.trim())
+}
+
 export class CryptoUtil {
   static encrypt(text) {
-    if (!process.env.ENCRYPTION_ENABLED) {
+    if (!isEncryptionEnabled()) {
       return text
     }
     const key = Buffer.from(process.env.ENCRYPTION_KEY, 'utf-8')
@@ -18,15 +28,15 @@ export class CryptoUtil {
   }
 
   static decrypt(text) {
-    if (!process.env.ENCRYPTION_ENABLED) {
+    if (!isEncryptionEnabled()) {
       return text
     }
-    if (!text.includes(':')) {
+    if (!looksEncrypted(text)) {
       return text
     }
 
     const key = Buffer.from(process.env.ENCRYPTION_KEY, 'utf-8')
-    const [ivHex, encryptedHex] = text.split(':')
+    const [ivHex, encryptedHex] = text.trim().split(':')
     const iv = Buffer.from(ivHex, 'hex')
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv)
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8')
@@ -35,3 +45,5 @@ export class CryptoUtil {
     return decrypted
   }
 }
+
+export { isEncryptionEnabled, looksEncrypted }
