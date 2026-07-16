@@ -1,9 +1,11 @@
-# Project Coeus — Implementation Plan
+# Project Coeus — Implementation Plan *(archive)*
 
-Audit of `.cursor/features.md` against the existing codebase, with status and a prioritized completion roadmap.
+> **Status:** Historical snapshot from **2026-07-04**, before v1 implementation landed.  
+> **Do not use for current status.** See [../README.md](../README.md), [../tracking/v1-todos.md](../tracking/v1-todos.md), and [../reference/features.md](../reference/features.md).
 
-> **Last updated:** 2026-07-01  
-> **Note:** `features.md` still describes the original spec (`persistent/raw-notes`, GitHub Models, Transformers.js, Octokit). The code has diverged — especially toward **Gemini** and a separate **conversation chat** flow. This plan bridges that gap.
+Pre-grilling audit of `.cursor/reference/features.md` against the codebase at that time.
+
+> **Note:** LLM metadata now uses **Cloudflare Workers AI** (dev + prod). See [../guides/cloudflare-llm-setup.md](../guides/cloudflare-llm-setup.md). Everything below describes the **old** codebase state.
 
 ---
 
