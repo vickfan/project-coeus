@@ -105,7 +105,7 @@ Before first real v1 weave:
 
 ## Build Order 8 — Enable Cron (After Stable)
 
-- [ ] **8.1 enable-cron** — Uncomment `cron: '0 19 * * *'` in `distill.yml` (03:00 HKT / 19:00 UTC).
+- [x] **8.1 enable-cron** — Uncomment `cron: '0 19 * * *'` in `distill.yml` (03:00 HKT / 19:00 UTC).
 
 > `features.md` incorrectly labels `0 19 * * *` as midnight HKT — v1 spec is authoritative (03:00 HKT).
 

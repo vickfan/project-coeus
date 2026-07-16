@@ -26,7 +26,7 @@ Use this file to track implementation and prompt Cursor to build individual modu
   - [x] 1.1b Telegram user authorization (`TELEGRAM_USER_ID`)
   - [x] 1.2 Notes sync via Octokit when `NODE_ENV=PROD`; retries + failure alerts
 - [ ] **Module 2: Nightly Batch Weaver Engine (GitHub Actions Workflow)**
-  - [ ] 2.1 GitHub Action cron — `workflow_dispatch` wired; cron commented until stable (`distill.yml`)
+  - [x] 2.1 GitHub Action cron — `0 19 * * *` UTC (03:00 HKT) + `workflow_dispatch` (`distill.yml`)
   - [x] 2.2 Metadata extraction — `llm/noteMeta.mjs` (Cloudflare Workers AI dev + Actions)
   - [x] 2.3 Transformers.js (`Xenova/all-MiniLM-L6-v2`) embeddings — `llm/embeddings.mjs`
   - [x] 2.4 Semantic bi-directional matrix linking (cosine similarity + tag-aware thresholds)

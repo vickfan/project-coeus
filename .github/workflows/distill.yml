@@ -3,7 +3,7 @@ name: 'Coeus Daily Distill and Sync'
 on:
   schedule:
     # 每日凌晨 3:00 (HKT) 踢起，對應 UTC 時間係前一日嘅 19:00
-    # - cron: '0 19 * * *'
+    - cron: '0 19 * * *'
   workflow_dispatch: # 容許你隨時在 GitHub 網頁手動撳掣執行測試
 
 jobs:
