@@ -39,9 +39,10 @@ jobs:
 
       - name: 'Run Coeus Weave Batch'
         env:
-          LLM_PROVIDER: 'github'
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-          GITHUB_MODEL: 'openai/gpt-4o-mini'
+          LLM_PROVIDER: 'cloudflare'
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+          CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
+          CLOUDFLARE_AI_MODEL: '@cf/meta/llama-3.2-3b-instruct'
         run: 'node src/weave-batch.mjs'
 
       - name: 'Commit and Push Changes to Private Notes'

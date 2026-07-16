@@ -1,6 +1,5 @@
 {
   "extension": ["mjs"],
   "spec": ["test/**/*.mjs"],
-  "ignore": ["test/weaver.mjs"],
   "timeout": 120000
 }

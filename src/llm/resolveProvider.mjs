@@ -1,10 +1,9 @@
 export function resolveLlmProvider() {
   const explicit = process.env.LLM_PROVIDER?.trim().toLowerCase()
-  if (explicit === 'gemini' || explicit === 'github') {
-    return explicit
+  if (explicit && explicit !== 'cloudflare') {
+    throw new Error(
+      `Unsupported LLM_PROVIDER=${explicit}; only cloudflare is supported`,
+    )
   }
-  if (process.env.GITHUB_ACTIONS === 'true') {
-    return 'github'
-  }
-  return 'gemini'
+  return 'cloudflare'
 }
