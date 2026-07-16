@@ -44,7 +44,9 @@ ${text}`
         },
       })
 
-      if (syncResult.success) {
+      if (syncResult.skipped) {
+        await ctx.reply(`✅ 筆記已本地儲存 (${fileName})`)
+      } else if (syncResult.success) {
         await ctx.reply(`✅ 筆記已儲存並同步到 GitHub (${fileName})`)
       }
 

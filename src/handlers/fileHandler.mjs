@@ -52,7 +52,9 @@ export class FileHandler {
         },
       })
 
-      if (syncResult.success) {
+      if (syncResult.skipped) {
+        await ctx.reply(`✅ 筆記「${safeName}」已本地儲存`)
+      } else if (syncResult.success) {
         await ctx.reply(`✅ 筆記「${safeName}」已儲存並同步到 GitHub`)
       }
 

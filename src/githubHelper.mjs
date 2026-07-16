@@ -13,6 +13,10 @@ const NOTES_DIR = path.join(REPO_ROOT, 'notes')
 
 const RETRY_DELAYS_MS = [1000, 2000, 4000]
 
+export function isProdSyncEnabled() {
+  return process.env.NODE_ENV?.trim().toUpperCase() === 'PROD'
+}
+
 function createOctokit() {
   const token = process.env.COEUS_NOTES_TOKEN
   if (!token) {
@@ -101,11 +105,16 @@ export class GitHubHelper {
       throw new Error('syncToGitHub requires filePath or filePaths')
     }
 
+    if (!isProdSyncEnabled()) {
+      console.log('[GitHubHelper] Skipping coeus-notes sync (NODE_ENV is not PROD)')
+      return { success: true, skipped: true }
+    }
+
     try {
       for (const localPath of paths) {
         await syncFileWithRetry(localPath, commitMessage)
       }
-      return { success: true }
+      return { success: true, synced: true }
     } catch (error) {
       if (onError) await onError(error)
       return { success: false, error }
