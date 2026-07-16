@@ -1,5 +1,4 @@
 import fs from 'fs/promises'
-import fsSync from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
@@ -18,6 +17,16 @@ const __dirname = path.dirname(__filename)
 
 const RETRY_DELAYS_MS = [1000, 2000, 4000]
 const RAW_NOTES_DIR = path.join(__dirname, '../notes/raw-notes')
+const RAW_NOTES_GITKEEP = path.join(RAW_NOTES_DIR, '.gitkeep')
+
+async function ensureRawNotesDir() {
+  await fs.mkdir(RAW_NOTES_DIR, { recursive: true })
+  try {
+    await fs.access(RAW_NOTES_GITKEEP)
+  } catch {
+    await fs.writeFile(RAW_NOTES_GITKEEP, '')
+  }
+}
 
 async function listRawNotes() {
   const entries = await fs.readdir(RAW_NOTES_DIR, { withFileTypes: true })
@@ -59,10 +68,7 @@ async function weaveWithRetry(basename) {
 }
 
 async function main() {
-  if (!fsSync.existsSync(RAW_NOTES_DIR)) {
-    console.error('[weave-batch] raw-notes directory missing')
-    process.exit(1)
-  }
+  await ensureRawNotesDir()
 
   const files = await listRawNotes()
   if (files.length === 0) {
