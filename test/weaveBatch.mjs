@@ -6,6 +6,7 @@ import {
   titleFromFilename,
   extractExistingTags,
   mergeTags,
+  sanitizeLlmTags,
 } from '../src/weaveBatchUtils.mjs'
 
 describe('weaveBatchUtils', () => {
@@ -98,6 +99,49 @@ Talking about #ai`
         mergeTags(['a', 'b', 'c', 'd', 'e', 'f'], ['g', 'h']),
         ['a', 'b', 'c', 'd', 'e', 'f'],
       )
+    })
+
+    it('drops junk llm tags before merge', () => {
+      assert.deepStrictEqual(mergeTags(['keep'], ['...', 'ok', '…']), ['keep', 'ok'])
+    })
+  })
+
+  describe('sanitizeLlmTags', () => {
+    it('removes ellipsis and punctuation-only tags', () => {
+      assert.deepStrictEqual(sanitizeLlmTags(['...', '…', '.', 'AI']), ['AI'])
+    })
+
+    it('removes simplified Chinese tags and keeps english or traditional', () => {
+      assert.deepStrictEqual(
+        sanitizeLlmTags(['学习', '學習', 'learning', '请计的欢张']),
+        ['學習', 'learning'],
+      )
+    })
+
+    it('allows empty tag lists', () => {
+      assert.deepStrictEqual(sanitizeLlmTags([]), [])
+      assert.deepStrictEqual(sanitizeLlmTags(['...', '']), [])
+    })
+
+    it('replaces spaces with hyphens', () => {
+      assert.deepStrictEqual(
+        sanitizeLlmTags(['Data Collection', 'product  team']),
+        ['Data-Collection', 'product-team'],
+      )
+    })
+  })
+
+  describe('extractExistingTags spaces', () => {
+    it('hyphenates spaced frontmatter tags', () => {
+      const input = `---
+tags: ["Data Collection", "product team"]
+---
+
+Body`
+      assert.deepStrictEqual(extractExistingTags(input), [
+        'Data-Collection',
+        'product-team',
+      ])
     })
   })
 })

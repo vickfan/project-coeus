@@ -1,7 +1,17 @@
 import { resolveLlmProvider } from './resolveProvider.mjs'
+import { sanitizeLlmTags } from '../weaveBatchUtils.mjs'
 
-const META_SYSTEM_INSTRUCTION =
-  '你是一個嚴格的個人知識庫(PKM)管理員。你的唯一任務是分析用戶輸入的筆記內容，並為其提取一個適合當作 Obsidian 檔名的標題，以及 2-3 個分類標籤。絕對不要包含任何筆記原文。'
+const META_SYSTEM_INSTRUCTION = `你是一個嚴格的個人知識庫(PKM)管理員。你的唯一任務是分析用戶輸入的筆記內容，並為其提取：
+1. 一個適合當作 Obsidian 檔名的標題
+2. 0–3 個分類標籤（不確定就回傳空陣列 tags: []，不要硬加標籤）
+
+標籤語言規則：
+- 優先使用英文
+- 可用繁體中文
+- 禁止簡體中文
+- 不要用省略號、標點或無意義字串當標籤
+
+絕對不要包含任何筆記原文。`
 
 function normalizeNoteText(rawNoteText) {
   return typeof rawNoteText === 'string' ? rawNoteText : JSON.stringify(rawNoteText)
@@ -12,7 +22,10 @@ function parseMetaJson(text) {
   if (!parsed.title || !Array.isArray(parsed.tags)) {
     throw new Error('Invalid metadata JSON from LLM')
   }
-  return parsed
+  return {
+    title: parsed.title,
+    tags: sanitizeLlmTags(parsed.tags),
+  }
 }
 
 async function extractMetaViaCloudflare(rawNoteText) {
@@ -37,7 +50,7 @@ async function extractMetaViaCloudflare(rawNoteText) {
         { role: 'system', content: META_SYSTEM_INSTRUCTION },
         {
           role: 'user',
-          content: `${normalizeNoteText(rawNoteText)}\n\nRespond with JSON only: {"title":"...","tags":["..."]}`,
+          content: `${normalizeNoteText(rawNoteText)}\n\nRespond with JSON only, e.g. {"title":"Short Title","tags":["english-tag"]} or {"title":"Short Title","tags":[]}`,
         },
       ],
       response_format: { type: 'json_object' },
