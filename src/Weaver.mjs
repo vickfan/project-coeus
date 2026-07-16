@@ -7,6 +7,7 @@ import crypto from 'crypto'
 import { CryptoUtil } from './cryptoUtil.mjs'
 import { extractNoteMeta, embedText } from './llmProvider.mjs'
 import { resolveLlmProvider } from './llm/resolveProvider.mjs'
+import { extractExistingTags, mergeTags } from './weaveBatchUtils.mjs'
 
 dotenv.config()
 
@@ -44,7 +45,7 @@ async function startWeaving(rawNoteText, options = {}) {
   const newVector = await embedText(rawNoteText)
   const meta = await extractNoteMeta(rawNoteText)
   const title = sanitizeTitle(titleOverride ?? meta.title)
-  const tags = meta.tags
+  const tags = mergeTags(extractExistingTags(rawNoteText), meta.tags)
 
   const indexPath = path.join(__dirname, '../notes', 'index.json')
   const notesDir = path.join(__dirname, '../notes', 'persistent')
